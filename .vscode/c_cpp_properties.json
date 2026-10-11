@@ -1,0 +1,30 @@
+{
+    "env": {
+        "KENV": "linux-headers-6.12.111+deb13"
+    },
+    "configurations": [
+        {
+            "name": "Linux",
+            "intelliSenseMode": "linux-gcc-x64",
+            "cStandard": "gnu11",
+            "cppStandard": "c++17",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/src/${KENV}-common/include",
+                "/usr/src/${KENV}-common/include/uapi",
+                "/usr/src/${KENV}-common/arch/x86/include",
+                "/usr/src/${KENV}-common/arch/x86/include/uapi",
+                "/usr/src/${KENV}-amd64/include",
+                "/usr/src/${KENV}-amd64/include/generated",
+                "/usr/src/${KENV}-amd64/include/generated/uapi",
+                "/usr/src/${KENV}-amd64/arch/x86/include/generated",
+                "/usr/src/${KENV}-amd64/arch/x86/include/generated/uapi"
+            ],
+            "defines": [
+                "__KERNEL__",
+                "MODULE"
+            ]
+        }
+    ],
+    "version": 4
+}
