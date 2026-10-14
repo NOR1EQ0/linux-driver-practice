@@ -18,12 +18,6 @@ static struct device *nori_device;
 
 static char devbuf[BUFFER_SIZE];
 
-static int nori_open(struct inode *inode, struct file *filp)
-{
-	pr_info("device opened.");
-	return 0;
-}
-
 static ssize_t nori_read(struct file *filp, char __user *buf, size_t count,
 			 loff_t *fpos)
 {
@@ -31,9 +25,8 @@ static ssize_t nori_read(struct file *filp, char __user *buf, size_t count,
 	unsigned long copy_bytes;
 	char *head;
 
-	if (!count) {
+	if (!count)
 		return 0;
-	}
 
 	head = devbuf + *fpos;
 	if (*fpos + count > BUFFER_SIZE) {
@@ -42,7 +35,7 @@ static ssize_t nori_read(struct file *filp, char __user *buf, size_t count,
 	}
 	copy_bytes = copy_to_user(buf, head, count);
 	ret = count - copy_bytes;
-	*fpos = *fpos == BUFFER_SIZE ? 0 : *fpos + ret;
+	*fpos = *fpos >= BUFFER_SIZE ? 0 : *fpos + ret;
 
 	return ret;
 }
@@ -50,21 +43,70 @@ static ssize_t nori_read(struct file *filp, char __user *buf, size_t count,
 static ssize_t nori_write(struct file *filp, const char __user *buf,
 			  size_t count, loff_t *fpos)
 {
-	
+	ssize_t ret;
+	unsigned long copy_bytes;
+	char *head;
+
+	if (!count)
+		return 0;
+
+	head = devbuf + *fpos;
+	if (*fpos + count > BUFFER_SIZE) {
+		count = BUFFER_SIZE - *fpos;
+		*fpos = BUFFER_SIZE;
+	}
+	copy_bytes = copy_from_user(head, buf, count);
+	ret = count - copy_bytes;
+	*fpos = *fpos >= BUFFER_SIZE ? 0 : *fpos + ret;
+
+	return ret;
+}
+
+static int nori_open(struct inode *inode, struct file *filp)
+{
+	pr_info("device opened.");
+	return 0;
+}
+
+static int nori_release(struct inode *inode, struct file *filp)
+{
+	pr_info("device closed.");
+	return 0;
 }
 
 static const struct file_operations nori_fops = { .owner = THIS_MODULE,
 						  .read = nori_read,
-						  .write = nori_write };
+						  .write = nori_write,
+						  .open = nori_open,
+						  .release = nori_release };
 
 static int __init nori_init(void)
 {
+	int ret;
+
+	ret = alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME);
+	if (ret)
+		return ret;
+
 	cdev_init(&nori_cdev, &nori_fops);
+	nori_cdev.owner = THIS_MODULE;
+	ret = cdev_add(&nori_cdev, dev_num, 1);
+	if (ret)
+		goto err_cdev;
 
 	get_random_bytes(devbuf, BUFFER_SIZE);
 	pr_info("buffer initialized.");
 
 	pr_info("device initialized.");
+	return 0;
+
+err_device:
+	class_destroy(nori_class);
+err_class:
+	cdev_del(&nori_cdev);
+err_cdev:
+	unregister_chrdev_region(dev_num, 1);
+	return ret;
 }
 
 static int __exit nori_exit(void)
