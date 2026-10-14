@@ -1,3 +1,5 @@
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/cdev.h>
@@ -8,8 +10,11 @@
 
 #define DEVICE_NAME "noridev_hello"
 #define CLASS_NAME "noridev_class"
-
 #define BUFFER_SIZE ((size_t)1024)
+
+#ifndef KBUILD_MODNAME
+#define KBUILD_MODNAME DEVICE_NAME
+#endif
 
 static dev_t dev_num;
 static struct cdev nori_cdev;
@@ -87,12 +92,26 @@ static int __init nori_init(void)
 	ret = alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME);
 	if (ret)
 		return ret;
+	pr_debug("new device number: %d", dev_num);
 
 	cdev_init(&nori_cdev, &nori_fops);
 	nori_cdev.owner = THIS_MODULE;
 	ret = cdev_add(&nori_cdev, dev_num, 1);
 	if (ret)
 		goto err_cdev;
+
+	nori_class = class_create(CLASS_NAME);
+	if (IS_ERR(nori_class)) {
+		ret = PTR_ERR(nori_class);
+		goto err_class;
+	}
+
+	nori_device =
+		device_create(nori_class, NULL, dev_num, NULL, DEVICE_NAME);
+	if (IS_ERR(nori_device)) {
+		ret = PTR_ERR(nori_device);
+		goto err_device;
+	}
 
 	get_random_bytes(devbuf, BUFFER_SIZE);
 	pr_info("buffer initialized.");
@@ -111,6 +130,11 @@ err_cdev:
 
 static int __exit nori_exit(void)
 {
+	device_destroy(nori_class, dev_num);
+	class_destroy(nori_class);
+	cdev_del(&nori_cdev);
+	unregister_chrdev_region(dev_num, 1);
+	return 0;
 }
 
 module_init(nori_init);
