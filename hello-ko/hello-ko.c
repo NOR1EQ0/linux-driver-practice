@@ -56,7 +56,7 @@ static ssize_t nori_write(struct file *filp, const char __user *buf,
 		return 0;
 
 	head = devbuf + *fpos;
-	if (*fpos + count > BUFFER_SIZE) {
+	if (*fpos + count >= BUFFER_SIZE) {
 		count = BUFFER_SIZE - *fpos;
 		*fpos = BUFFER_SIZE;
 	}
