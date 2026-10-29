@@ -128,13 +128,13 @@ err_cdev:
 	return ret;
 }
 
-static int __exit nori_exit(void)
+static void __exit nori_exit(void)
 {
 	device_destroy(nori_class, dev_num);
 	class_destroy(nori_class);
 	cdev_del(&nori_cdev);
 	unregister_chrdev_region(dev_num, 1);
-	return 0;
+	return;
 }
 
 module_init(nori_init);
